@@ -1,114 +1,276 @@
-# Task Manager App - AWS EC2 Deployment Guide
+# 📋 Nexus Tasks — MERN Task Manager
 
-This guide details the steps taken to deploy our MERN (MongoDB, Express, React, Node.js) Task Manager application onto a single AWS EC2 instance. 
-
-Instead of using Nginx, this deployment configures the Node.js/Express backend to serve the compiled static files of the React frontend, running everything securely on port 5000.
-
-## Prerequisites
-- An AWS Account
-- A MongoDB database (MongoDB Atlas recommended)
-- Your project pushed to a GitHub repository
+A full-stack Task Manager built with **MongoDB, Express, React, and Node.js**, deployed on a single **AWS EC2** instance. The Express backend serves the compiled React frontend as static files — no Nginx required.
 
 ---
 
-## Step 1: AWS EC2 Provisioning
+## 🗂️ Project Structure
 
-1. **Launch an EC2 Instance:**
-   - **OS:** Ubuntu 22.04 LTS or 24.04 LTS
-   - **Instance Type:** `t2.micro` (Free Tier eligible)
-   - **Key Pair:** Create and download a `.pem` file for SSH access.
-2. **Configure Security Group (Network Settings):**
-   - Allow **SSH** (Port 22) from anywhere.
-   - Allow **HTTP/HTTPS** traffic.
-   - **Crucial:** Add a **Custom TCP Rule** for **Port 5000** (Source: `0.0.0.0/0`) to allow web traffic to the application.
+```
+task-manager/
+├── backend/
+│   ├── models/
+│   │   └── Task.js
+│   ├── index.js
+│   ├── package.json
+│   └── .env          ← create this manually
+└── frontend/
+    ├── src/
+    ├── .env          ← edit this before building
+    ├── package.json
+    └── vite.config.js
+```
 
 ---
 
-## Step 2: Server Configuration
+## ☁️ Step 1 — Launch & Configure EC2 Instance
 
-Open your local terminal and SSH into your EC2 instance using the downloaded key pair:
+1. Go to **AWS Console → EC2 → Launch Instance**
+2. Choose the following settings:
 
-# Update packages
+| Setting | Value |
+|---|---|
+| OS | Ubuntu 22.04 LTS or 24.04 LTS |
+| Instance Type | `t2.micro` (Free Tier eligible) |
+| Key Pair | Create & download a `.pem` file |
+
+3. Under **Network Settings → Security Group**, add these inbound rules:
+
+| Type | Port | Source |
+|---|---|---|
+| SSH | 22 | Anywhere (`0.0.0.0/0`) |
+| HTTP | 80 | Anywhere |
+| HTTPS | 443 | Anywhere |
+| Custom TCP | **5000** | Anywhere (`0.0.0.0/0`) |
+
+> ⚠️ **Port 5000** is required for the app to be accessible from the browser.
+
+4. SSH into your instance from your local terminal:
+
+```bash
+chmod 400 your-key.pem
+ssh -i "your-key.pem" ubuntu@<YOUR_EC2_PUBLIC_IP>
+```
+
+---
+
+## 🛠️ Step 2 — Install Server Dependencies
+
+Run the following commands on your EC2 instance:
+
+```bash
+# Update package lists
 sudo apt update && sudo apt upgrade -y
 
 # Install Git
 sudo apt install git -y
 
-# Install Node.js using NVM (Node Version Manager)
-curl -o- [https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh](https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh) | bash
-source ~/.bashrc
-nvm install --lts
+# Install Node.js via NVM (Node Version Manager)
+sudo apt install -y nodejs
 
-# Clone the repository
-git clone [https://github.com/your-username/task-manager-lp2.git](https://github.com/your-username/task-manager-lp2.git)
-cd task-manager-lp2
+sudo apt install npm 
 
-# Build the Frontend
-cd frontend
+# Verify installation
+node -v
+npm -v
+
+sudo npm install -g pm2
+```
+
+---
+
+## 📥 Step 3 — Clone the Repository
+
+```bash
+git clone https://github.com/your-username/task-manager.git
+cd task-manager
+```
+
+---
+
+## ⚙️ Step 4 — Configure Environment Variables
+
+### Backend `.env`
+
+Create the environment file inside the `backend/` folder:
+
+```bash
+cd backend
+nano .env
+```
+
+Add the following content:
+
+```env
+PORT=5000
+MONGODB_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/taskmanager
+```
+
+> 💡 **MongoDB Atlas** is recommended. Make sure your cluster allows connections from `0.0.0.0/0` (or your EC2's IP) under **Network Access**.
+
+---
+
+## 🖥️ Step 5 — Configure & Build the Frontend
+
+### Edit Frontend `.env` (Before Building!)
+
+Before building the React app, update the API URL to point to your EC2 instance:
+
+```bash
+cd ../frontend
+nano .env
+```
+
+Change the value to your EC2 public IP:
+
+```env
+# Local development
+# VITE_API_URL=http://localhost:5000/api/tasks
+
+# AWS EC2 Production — replace with your actual EC2 Public IPv4
+VITE_API_URL=http://<YOUR_EC2_PUBLIC_IP>:5000/api/tasks
+```
+
+> ⚠️ If you skip this step, the frontend will try to call `localhost` from the user's browser and fail to reach your server.
+
+### Build the Frontend
+
+```bash
 npm install
 npm run build
+```
 
+This generates the `frontend/dist/` folder that Express will serve.
+
+---
+
+## 🔌 Step 6 — Install Backend Dependencies
+
+```bash
 cd ../backend
 npm install
+```
 
-# Create a .env file to hold your port and database connection string:
-nano .env
+### Verify Express Version
 
-Add the following:
+This project uses **Express v4**. Check your version:
 
-PORT=5000
+```bash
+npm list express
+```
 
-MONGODB_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/taskmanager
+If you see Express v5 installed (which causes a `PathError` with wildcard routes), downgrade it:
 
-## ⚠️ Important: The Express 5 Routing Fix
-To allow Express to serve the React application, we added static file serving to backend/index.js.
-Because this project uses Express v5, the traditional wildcard route app.get('*') causes a crash (PathError: Missing parameter name). We fixed this by updating the wildcard to a Regular Expression (/.*/).
-Added to the bottom of backend/index.js (before app.listen):
+```bash
+npm uninstall express
+npm install express@4
+```
 
-JavaScript
+---
+
+## 📝 Step 7 — Verify `backend/index.js` Deployment Code
+
+Ensure the bottom of `backend/index.js` contains the static file serving block **before** `app.listen`:
+
+```js
 const path = require('path');
 
-// Serve frontend static files
+// Serve React frontend static files
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// Express 5 Catch-all route using Regex (Fixes '*' PathError)
-app.get(/.*/, (req, res) => {
+// Catch-all route — serves index.html for any unmatched route (supports React Router)
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
 
-// Ensure app binds to 0.0.0.0 for external access
+// Bind to 0.0.0.0 so EC2 accepts external connections
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
+```
 
-Or instead use Express-4 version instead of 5
-1) In backend folder -
-   
-   npm uninstall express
+> ⚠️ **Express v5 Note:** If you are using Express v5, replace `app.get('*', ...)` with:
+> ```js
+> app.get(/.*/, (req, res) => { ... });
+> ```
+> Express v5 does not support bare wildcard `*` — it throws a `PathError: Missing parameter name`.
 
-   npm install express@4
+---
 
-   npm list express
+## 🚀 Step 8 — Run with PM2 (Process Manager)
 
-# Step 5: Running the App with PM2
-
-## Install PM2 globally using sudo
-sudo npm install -g pm2
-
-## Start the application
-pm2 start index.js --name "task-manager-api"
-
-## To check whether process is Running
-pm2 status
-
-## Configure PM2 to restart on server reboot
-pm2 startup
-## (Run the specific command PM2 outputs on the screen)
-
-## Save the current list of processes
-pm2 save
-
+PM2 keeps your app running after you close the SSH session and restarts it automatically on server reboot.
 
 ```bash
-chmod 400 your-key.pem
-ssh -i "your-key.pem" ubuntu@<YOUR_EC2_PUBLIC_IP>
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Start the backend server
+pm2 start index.js --name "task-manager-api"
+
+# Check that the process is running
+pm2 status
+
+# Generate startup script (run the command PM2 outputs)
+pm2 startup
+
+# Save the current process list
+pm2 save
+```
+
+---
+
+## ✅ Step 9 — Access Your App
+
+Open your browser and navigate to:
+
+```
+http://<YOUR_EC2_PUBLIC_IP>:5000
+```
+
+---
+
+## 🧰 Common PM2 Commands
+
+| Command | Description |
+|---|---|
+| `pm2 status` | Check running processes |
+| `pm2 logs task-manager-api` | View live logs |
+| `pm2 restart task-manager-api` | Restart the app |
+| `pm2 stop task-manager-api` | Stop the app |
+| `pm2 delete task-manager-api` | Remove from PM2 list |
+
+---
+
+## 🔄 Updating the App After Changes
+
+```bash
+# Pull latest code
+git pull origin main
+
+# Rebuild frontend if any frontend changes were made
+cd frontend && npm run build && cd ..
+
+# Restart the backend server
+pm2 restart task-manager-api
+```
+
+---
+
+## 🧱 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, Axios, Lucide React |
+| Backend | Node.js, Express 4, Mongoose |
+| Database | MongoDB (Atlas recommended) |
+| Deployment | AWS EC2 (Ubuntu), PM2 |
+
+---
+
+## 📋 Prerequisites
+
+- An **AWS Account**
+- A **MongoDB Atlas** cluster (or self-hosted MongoDB)
+- Your project pushed to a **GitHub repository**
+- Basic familiarity with the Linux terminal
