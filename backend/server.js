@@ -30,17 +30,27 @@ app.get('/api/tasks', async (req, res) => {
 
 // Create a new task
 app.post('/api/tasks', async (req, res) => {
+  const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+  const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
+  const status = ['pending', 'in-progress', 'completed'].includes(req.body.status)
+    ? req.body.status
+    : 'pending';
+
+  if (!title) {
+    return res.status(400).json({ message: 'Task title is required' });
+  }
+
   const task = new Task({
-    title: req.body.title,
-    description: req.body.description,
-    status: req.body.status
+    title,
+    description,
+    status
   });
 
   try {
     const newTask = await task.save();
     res.status(201).json(newTask);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
