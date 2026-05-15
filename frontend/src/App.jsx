@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Trash2, Plus, CheckCircle2, Circle, Clock, ClipboardList } from 'lucide-react';
 
-// The API URL is loaded from the .env file. 
-// For production on EC2, simply change the URL in the frontend/.env file!
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/tasks';
+// The API URL is loaded from the .env file.
+// In production the frontend is served by the backend so a relative
+// path is used; no instance public IP is required.
+const API_URL = import.meta.env.VITE_API_URL || '/api/tasks';
 
 function App() {
   const [tasks, setTasks] = useState([]);
