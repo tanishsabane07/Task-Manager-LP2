@@ -13,7 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/taskmanager')
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/taskmanager';
+
+mongoose.connect(mongoUri)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('Failed to connect to MongoDB', err));
 
@@ -30,6 +32,7 @@ app.get('/api/tasks', async (req, res) => {
 
 // Create a new task
 app.post('/api/tasks', async (req, res) => {
+  console.log('POST /api/tasks body:', req.body);
   const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
   const description = typeof req.body.description === 'string' ? req.body.description.trim() : '';
   const status = ['pending', 'in-progress', 'completed'].includes(req.body.status)
@@ -50,6 +53,7 @@ app.post('/api/tasks', async (req, res) => {
     const newTask = await task.save();
     res.status(201).json(newTask);
   } catch (err) {
+    console.error('Error saving task:', err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -90,12 +94,12 @@ app.delete('/api/tasks/:id', async (req, res) => {
 
 // Serve the static files from the React frontend app
 // This assumes your frontend folder is side-by-side with your backend folder
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+app.use(express.static(path.join(__dirname, '../frontend/build')));
 
 // Catch-all route to serve index.html for any request that doesn't match an API route
 // This handles React Router if you are using it (or just ensures the page loads if refreshed)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
+  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
 // ==========================================

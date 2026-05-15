@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, Plus, CheckCircle2, Circle, Clock, ClipboardList } from 'lucide-react';
+import { Trash2, Plus, CheckCircle2, Circle, ClipboardList } from 'lucide-react';
 
 // The API URL is loaded from the .env file.
 // In production the frontend is served by the backend so a relative
@@ -14,17 +14,25 @@ function App() {
   const [filter, setFilter] = useState('all'); // all, pending, in-progress, completed
 
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    let cancelled = false;
 
-  const fetchTasks = async () => {
-    try {
-      const response = await axios.get(API_URL);
-      setTasks(response.data);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    }
-  };
+    const loadTasks = async () => {
+      try {
+        const response = await axios.get(API_URL);
+        if (!cancelled) {
+          setTasks(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+      }
+    };
+
+    loadTasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +48,9 @@ function App() {
       setTitle('');
       setDescription('');
     } catch (error) {
-      console.error('Error creating task:', error);
+      const message = error.response?.data?.message || error.message;
+      console.error('Error creating task:', message);
+      alert(`Error creating task: ${message}`);
     }
   };
 

@@ -1,6 +1,6 @@
-# Full-Stack Blog Application Deployment on AWS EC2 (Ubuntu)
+# Full-Stack Task Manager Deployment on AWS EC2 (Ubuntu)
 
-This project demonstrates deployment of a full-stack blog application (React frontend + Node.js/Express backend + MongoDB) on an AWS EC2 instance. The application allows users to create, view, update, and delete blog posts through a web interface.
+This project demonstrates deployment of a full-stack task manager (React frontend + Node.js/Express backend + MongoDB) on an AWS EC2 instance. The application allows users to create, view, update, and delete tasks through a web interface.
 
 ---
 
@@ -53,8 +53,8 @@ sudo npm install -g pm2
 ## Step 4: Clone Project
 
 ```bash
-git clone https://github.com/vedbabar/Blog-app-LP-2.git
-cd Blog-app-LP-2
+git clone <your-repo-url>
+cd Task-Manager-LP2
 ```
 
 ---
@@ -75,8 +75,7 @@ nano .env
 Example:
 
 ```
-MONGO_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/blogdb?retryWrites=true&w=majority
-JWT_SECRET=your_super_secret_jwt_key_min_32_chars
+MONGO_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/taskmanager?retryWrites=true&w=majority
 PORT=5000
 ```
 
@@ -144,16 +143,16 @@ pm2 restart all
 
 ## Features
 
-- Create blog posts  
-- View blog posts  
-- Update blog posts  
-- Delete blog posts  
+- Create tasks  
+- View tasks  
+- Update tasks  
+- Delete tasks  
 
 ---
 
 ## Conclusion
 
-The full-stack blog application is successfully deployed on an AWS EC2 instance. The backend serves both API endpoints and the React frontend. The application is publicly accessible and supports remote updates using SSH.
+The full-stack task manager is successfully deployed on an AWS EC2 instance. The backend serves both API endpoints and the React frontend. The application is publicly accessible and supports remote updates using SSH.
 
 ---
 
